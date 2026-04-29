@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue System Scoreboard | TuningSQL</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --gold: #f4b942;
+            --gold-dim: rgba(244, 185, 66, 0.42);
+            --blue: #60a5fa;
+            --blue-dim: rgba(96, 165, 250, 0.45);
+            --mint: #34d399;
+            --coral: #fb7185;
+            --ink: #07111f;
+            --panel: rgba(11, 18, 32, 0.86);
+            --panel-soft: rgba(15, 23, 42, 0.72);
+            --line: rgba(148, 163, 184, 0.22);
+            --glass: rgba(11, 18, 32, 0.84);
+            --glass-warm: rgba(14, 18, 28, 0.88);
+            --border-gold: rgba(244, 185, 66, 0.24);
+            --border-blue: rgba(96, 165, 250, 0.28);
+            --grid-line: rgba(255, 255, 255, 0.12);
+            --grid-line-accent: rgba(251, 191, 36, 0.18);
+
+            --level-fill-1: rgba(251, 191, 36, 0.07);
+            --level-fill-2: rgba(249, 115, 22, 0.07);
+            --level-fill-3: rgba(56, 189, 248, 0.06);
+            --level-fill-4: rgba(99, 102, 241, 0.06);
+            --flame-angle: -24deg;
+            --theme-color: hsl(28 94% 58%);
+            --theme-glow: hsla(28 94% 58% / 0.33);
+            --theme-soft: hsla(28 94% 58% / 0.18);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--ink);
+            color: #f8fafc;
+            overflow: hidden;
+        }
+
+        /* ── Background Image ── */
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background: url('Dragon_background.jpg') no-repeat center center / cover;
+            filter: brightness(0.38) contrast(0.95) saturate(0.68);
+            opacity: 0.28;
+            z-index: 0;
+            animation: ambientZoom 60s ease-in-out infinite;
+        }
+
+        @keyframes ambientZoom {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.06);
+            }
+        }
+
+        /* ── Scene overlay: dark vignette + colour tints ── */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(to bottom,
+                    rgba(7, 17, 31, 0.88) 0%,
+                    rgba(7, 17, 31, 0.66) 42%,
+                    rgba(7, 17, 31, 0.86) 100%),
+                radial-gradient(ellipse at 82% 18%, rgba(96, 165, 250, 0.12), transparent 44%),
+                radial-gradient(ellipse at 14% 78%, rgba(52, 211, 153, 0.08), transparent 46%);
+            z-index: 1;
+        }
+
+        /* ── Layout ── */
+        .dashboard {
+            position: relative;
+            z-index: 10;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            padding: 26px 28px 24px;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 24px;
+        }
+
+        .title-block {
+            flex: 1;
+        }
+
+        .title-block h1 {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+        }
+
+        .title-block p {
+            margin: 10px 0 0 2px;
+            font-size: 1.05rem;
+            color: var(--blue);
+            letter-spacing: 3px;
+            font-weight: 700;
+            text-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+        }
+
+        .score-stats {
+            min-width: 520px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .next-reward-stat {
+            grid-column: span 2;
+        }
+
+        .score-stat {
+            background: var(--panel-soft);
+            border: 1px solid color-mix(in oklab, var(--theme-soft), var(--line));
+            border-radius: 7px;
+            padding: 10px 12px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+        }
+
+        .score-stat span {
+            display: block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.58rem;
+            letter-spacing: 1.1px;
+            color: rgba(226, 232, 240, 0.72);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .score-stat strong {
+            display: block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.12rem;
+            color: var(--theme-color);
+            letter-spacing: 1px;
+            text-shadow: none;
+        }
+
+        /* ── Grid Container ── */
+        .grid-container {
+            position: relative;
+            margin: 0 auto;
+            width: 100%;
+            height: 100%;
+            border-radius: 14px;
+            background:
+                linear-gradient(145deg, rgba(8, 15, 28, 0.96), rgba(12, 20, 32, 0.92)),
+                radial-gradient(ellipse at 18% 18%, rgba(96, 165, 250, 0.08), transparent 44%),
+                radial-gradient(ellipse at 88% 80%, rgba(52, 211, 153, 0.07), transparent 42%);
+            overflow: hidden;
+            border: 1px solid var(--line);
+        }
+
+        .vibe-dragon {
+            position: absolute;
+            right: -2%;
+            top: -7%;
+            width: min(48vw, 760px);
+            aspect-ratio: 1 / 1;
+            background: url('flying dragon.png') no-repeat center / contain;
+            opacity: 0.3;
+            mix-blend-mode: screen;
+            filter: saturate(1.18) contrast(1.08) drop-shadow(0 20px 38px rgba(0, 0, 0, 0.5));
+            pointer-events: none;
+            z-index: 1;
+            transform: rotate(-9deg);
+        }
+
+        .score-stage {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-rows: auto auto;
+            align-content: start;
+            gap: 22px;
+            padding: 34px;
+            z-index: 2;
+        }
+
+        .mini-dragon {
+            position: absolute;
+            width: 210px;
+            height: 210px;
+            background: url('flying dragon.png') no-repeat center / contain;
+            opacity: 0.46;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            filter: saturate(1.25) contrast(1.08) drop-shadow(0 18px 30px rgba(0, 0, 0, 0.5));
+            z-index: 1;
+        }
+
+        .mini-dragon.one {
+            left: -1.5%;
+            top: 2%;
+            transform: rotate(-12deg) scale(1.1);
+        }
+
+        .mini-dragon.two {
+            right: 1%;
+            top: 29%;
+            transform: rotate(13deg) scale(0.92);
+            opacity: 0.34;
+        }
+
+        .mini-dragon.three {
+            left: 5%;
+            bottom: 1%;
+            transform: rotate(7deg) scale(0.82);
+            opacity: 0.3;
+        }
+
+        .mini-dragon.four {
+            right: 8%;
+            bottom: 2%;
+            transform: rotate(-8deg) scale(0.78);
+            opacity: 0.28;
+        }
+
+        .big-progress-panel {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.74);
+            border: 1px solid color-mix(in oklab, var(--theme-soft), var(--line));
+            border-radius: 8px;
+            padding: 18px 24px 20px;
+            box-shadow: 0 18px 44px rgba(0, 0, 0, 0.26);
+        }
+
+        .big-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 18px;
+            margin-bottom: 13px;
+        }
+
+        .big-progress-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--gold);
+            font-size: 1.08rem;
+            letter-spacing: 2.6px;
+            text-transform: uppercase;
+        }
+
+        .big-progress-value {
+            font-family: 'Orbitron', sans-serif;
+            color: #f8fafc;
+            font-size: 1.9rem;
+            letter-spacing: 2px;
+            text-shadow: none;
+        }
+
+        .big-progress-track {
+            position: relative;
+            height: 34px;
+            background: rgba(148, 163, 184, 0.16);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 999px;
+            overflow: visible;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.55);
+            --progress-ratio: 0;
+            --dragon-pad: 146px;
+        }
+
+        .big-progress-track::after {
+            content: '';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            width: 126px;
+            height: 52px;
+            transform: translateY(-50%);
+            border-radius: 999px;
+            background:
+                radial-gradient(circle at 20% 52%, rgba(255, 228, 162, 0.78), rgba(255, 134, 61, 0.64) 42%, rgba(255, 64, 35, 0.28) 74%, transparent 100%);
+            filter: blur(2px);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .big-progress-track::before {
+            content: '';
+            position: absolute;
+            left: var(--dragon-pad);
+            top: 50%;
+            width: calc((100% - var(--dragon-pad)) * var(--progress-ratio));
+            height: 70%;
+            transform: translateY(-50%);
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(255, 175, 60, 0.42), rgba(255, 88, 58, 0.26), rgba(255, 58, 58, 0.1));
+            filter: blur(6px);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .progress-dragon {
+            position: absolute;
+            left: -24px;
+            top: 50%;
+            width: 120px;
+            height: 120px;
+            transform: translateY(-50%);
+            background: url('flying dragon.png') no-repeat center / contain;
+            filter: saturate(1.35) contrast(1.1) drop-shadow(0 0 20px rgba(255, 166, 77, 0.62));
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .big-progress-fill {
+            width: calc((100% - var(--dragon-pad)) * var(--progress-ratio));
+            height: 100%;
+            margin-left: var(--dragon-pad);
+            border-radius: inherit;
+            background: linear-gradient(90deg, #fff2bf 0%, #ffd166 16%, #ffab3d 34%, #ff7a1a 56%, #ff4d1f 78%, #d72a19 100%);
+            box-shadow: 0 0 22px var(--theme-glow), 0 0 42px rgba(255, 122, 26, 0.3);
+            transition: width 0.45s ease, background 0.35s ease, box-shadow 0.35s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .big-progress-markers {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            margin-top: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.68rem;
+            letter-spacing: 1.4px;
+            color: rgba(248, 250, 252, 0.7);
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .cards-layer {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+            align-items: start;
+            pointer-events: auto;
+        }
+
+        .segment-badge {
+            position: relative;
+            transform: none;
+            width: 100%;
+            min-width: 0;
+            background:
+                linear-gradient(155deg, rgba(15, 23, 42, 0.95), rgba(10, 18, 30, 0.9)),
+                radial-gradient(circle at 50% 28%, rgba(96, 165, 250, 0.16), transparent 34%);
+            backdrop-filter: blur(14px);
+            border: 1px solid color-mix(in oklab, var(--theme-soft), var(--line));
+            border-left: 4px solid var(--blue);
+            padding: 18px;
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+            pointer-events: auto;
+            min-height: 314px;
+            overflow: hidden;
+        }
+
+        .segment-badge::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 78% 8%, rgba(255, 255, 255, 0.08), transparent 22%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 42%);
+            pointer-events: none;
+        }
+
+        .segment-badge.is-complete {
+            border-color: rgba(52, 211, 153, 0.52);
+            box-shadow:
+                0 16px 44px rgba(0, 0, 0, 0.32),
+                0 0 0 1px rgba(52, 211, 153, 0.14),
+                0 0 36px rgba(52, 211, 153, 0.14);
+        }
+
+        .segment-badge[data-index="0"] {
+            border-left-color: #38bdf8;
+        }
+
+        .segment-badge[data-index="1"] {
+            border-left-color: #34d399;
+        }
+
+        .segment-badge[data-index="2"] {
+            border-left-color: #f4b942;
+        }
+
+        .segment-badge[data-index="3"] {
+            border-left-color: #fb7185;
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .level-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: var(--gold);
+            text-transform: uppercase;
+            text-shadow: none;
+        }
+
+        .level-month-tag {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.54rem;
+            letter-spacing: 1.4px;
+            color: rgba(226, 232, 240, 0.78);
+            text-transform: uppercase;
+        }
+
+        .status-pill {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.54rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #0f172a;
+            background: #bfdbfe;
+            border-radius: 999px;
+            padding: 4px 8px;
+            white-space: nowrap;
+        }
+
+        .segment-badge[data-index="0"] .status-pill {
+            background: #bae6fd;
+        }
+
+        .segment-badge[data-index="1"] .status-pill {
+            background: #bbf7d0;
+        }
+
+        .segment-badge[data-index="2"] .status-pill {
+            background: #fde68a;
+        }
+
+        .segment-badge[data-index="3"] .status-pill {
+            background: #fecdd3;
+        }
+
+        .reward-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 8px 0 14px;
+            padding: 14px;
+            border-radius: 14px;
+            background:
+                radial-gradient(circle at 38% 28%, rgba(244, 185, 66, 0.22), transparent 38%),
+                rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            position: relative;
+            z-index: 1;
+        }
+
+        .reward-icon {
+            width: 82px;
+            height: 82px;
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+            border-radius: 22px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+                rgba(96, 165, 250, 0.16);
+            font-size: 3.2rem;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 14px 30px rgba(0, 0, 0, 0.22);
+        }
+
+        .reward-copy {
+            min-width: 0;
+            text-align: left;
+        }
+
+        .reward-label {
+            display: block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.48rem;
+            letter-spacing: 1.1px;
+            color: rgba(226, 232, 240, 0.7);
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        .reward-name {
+            display: block;
+            color: var(--gold);
+            font-weight: 800;
+            font-size: 0.82rem;
+            line-height: 1.25;
+        }
+
+        .big-level-percent {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2.7rem, 4.2vw, 4.35rem);
+            line-height: 1;
+            color: #f8fafc;
+            letter-spacing: 1px;
+            margin: 4px 0 8px;
+            text-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-task {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 0.72rem;
+            letter-spacing: 1.2px;
+            display: block;
+            margin-bottom: 0;
+            color: #ffffff;
+            text-shadow: none;
+            line-height: 1.3;
+            text-transform: uppercase;
+            min-height: 2.1em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-reward {
+            display: none;
+        }
+
+        .score-readout {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.76rem;
+            letter-spacing: 1.1px;
+            color: rgba(248, 250, 252, 0.92);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .score-readout strong {
+            font-size: 0.9rem;
+            color: rgba(248, 250, 252, 0.95);
+        }
+
+        .level-slider {
+            width: 100%;
+            accent-color: var(--mint);
+            margin: 4px 0 2px;
+            position: relative;
+            z-index: 1;
+            height: 18px;
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .score-readout,
+        .level-slider,
+        .card-actions {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .segment-badge:not(:hover):not(:focus-within) .card-actions {
+            opacity: 0.72;
+        }
+
+        .segment-badge:not(:hover):not(:focus-within) .level-slider {
+            opacity: 0.7;
+        }
+
+        .complete-toggle {
+            border: 1px solid rgba(96, 165, 250, 0.32);
+            background: rgba(96, 165, 250, 0.08);
+            color: #bfdbfe;
+            border-radius: 5px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.48rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 5px 7px;
+            cursor: pointer;
+        }
+
+        .complete-toggle:hover {
+            background: rgba(96, 165, 250, 0.16);
+        }
+
+        .reward-unlocked {
+            animation: rewardPop 1s ease both;
+        }
+
+        @keyframes rewardPop {
+            0% {
+                transform: translateY(0) scale(1);
+            }
+
+            38% {
+                transform: translateY(-10px) scale(1.03);
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .celebration-toast {
+            position: fixed;
+            left: 50%;
+            top: 24px;
+            transform: translateX(-50%);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: 999px;
+            background:
+                linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94)),
+                radial-gradient(circle at 20% 20%, rgba(244, 185, 66, 0.24), transparent 40%);
+            border: 1px solid rgba(244, 185, 66, 0.55);
+            color: #f8fafc;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.46), 0 0 38px rgba(244, 185, 66, 0.18);
+            animation: toastInOut 3.1s ease both;
+        }
+
+        .celebration-toast strong {
+            color: var(--gold);
+        }
+
+        .celebration-toast .toast-icon {
+            display: grid;
+            place-items: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: rgba(244, 185, 66, 0.16);
+            font-size: 1.7rem;
+        }
+
+        @keyframes toastInOut {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -20px) scale(0.94);
+            }
+
+            14%,
+            82% {
+                opacity: 1;
+                transform: translate(-50%, 0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -16px) scale(0.96);
+            }
+        }
+
+        .spark {
+            position: fixed;
+            z-index: 190;
+            width: 9px;
+            height: 18px;
+            border-radius: 999px;
+            background: var(--spark-color, var(--gold));
+            box-shadow: 0 0 14px var(--spark-color, var(--gold));
+            pointer-events: none;
+            animation: sparkFly 960ms ease-out forwards;
+        }
+
+        @keyframes sparkFly {
+            to {
+                opacity: 0;
+                transform: translate(var(--spark-x), var(--spark-y)) rotate(620deg) scale(0.3);
+            }
+        }
+
+        .editable-text {
+            outline: none;
+        }
+
+        .editable-text:focus {
+            border-radius: 3px;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.24);
+            background: rgba(96, 165, 250, 0.08);
+        }
+
+        @keyframes dragonSoar {
+            0% {
+                transform: translate(-50%, -50%) rotate(-4deg) scale(1.00);
+            }
+
+            40% {
+                transform: translate(-50%, -62%) rotate(2deg) scale(1.03);
+            }
+
+            70% {
+                transform: translate(-50%, -55%) rotate(-2deg) scale(1.01);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) rotate(-4deg) scale(1.00);
+            }
+        }
+
+        /* ── You Are Here Indicator ── */
+        .you-are-here {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--gold);
+            border-radius: 50%;
+            z-index: 15;
+            pointer-events: none;
+            box-shadow: 0 0 20px var(--gold);
+            transform: translate(-50%, -50%);
+        }
+
+        .you-are-here::after {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border: 2px solid var(--gold);
+            border-radius: 50%;
+            animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        @keyframes ping {
+
+            75%,
+            100% {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        /* ── Confetti ── */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: var(--gold);
+            z-index: 100;
+            pointer-events: none;
+            border-radius: 2px;
+        }
+
+        /* ── Editable fields ── */
+        [contenteditable="true"] {
+            outline: none;
+        }
+
+        [contenteditable="true"]:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 2px;
+        }
+
+        @media (max-width: 1200px) {
+            .segment-badge {
+                padding: 13px;
+            }
+
+            .score-stats {
+                min-width: 420px;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .next-reward-stat {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .dashboard {
+                padding: 20px 16px;
+            }
+
+            .grid-container {
+                margin-left: 0;
+            }
+
+            .grid-container {
+                width: 100%;
+            }
+
+            .vibe-dragon {
+                width: min(50vw, 420px);
+                right: 2%;
+                top: 14%;
+                opacity: 0.14;
+            }
+
+            .score-stage {
+                padding: 18px;
+            }
+
+            .mini-dragon {
+                width: 98px;
+                height: 98px;
+            }
+
+            .cards-layer {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .card-task {
+                font-size: 0.54rem;
+            }
+
+            header {
+                display: block;
+            }
+
+            .score-stats {
+                min-width: 0;
+                margin-top: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="background-layer"></div>
+    <div class="overlay"></div>
+
+    <div class="dashboard">
+        <header>
+            <div class="title-block">
+                <h1 contenteditable="true">THE QUEUE SYSTEM SCOREBOARD</h1>
+                <p contenteditable="true">TUNINGSQL v1.0</p>
+            </div>
+
+            <div class="score-stats" aria-live="polite">
+                <div class="score-stat">
+                    <span>Points Earned</span>
+                    <strong id="totalScore">0 / 0</strong>
+                </div>
+                <div class="score-stat">
+                    <span>Completion</span>
+                    <strong id="overallProgress">0%</strong>
+                </div>
+                <div class="score-stat">
+                    <span>Levels Done</span>
+                    <strong id="levelsComplete">0 / 4</strong>
+                </div>
+                <div class="score-stat">
+                    <span>You Are Here</span>
+                    <strong id="currentLevel">Level 1</strong>
+                </div>
+                <div class="score-stat next-reward-stat">
+                    <span>Next Unlock</span>
+                    <strong id="nextReward">Coffee</strong>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid-container" id="gridContainer">
+            <div class="vibe-dragon" aria-hidden="true"></div>
+            <div class="mini-dragon one" aria-hidden="true"></div>
+            <div class="mini-dragon two" aria-hidden="true"></div>
+            <div class="mini-dragon three" aria-hidden="true"></div>
+            <div class="mini-dragon four" aria-hidden="true"></div>
+
+            <div class="score-stage">
+                <section class="big-progress-panel" aria-live="polite">
+                    <div class="big-progress-header">
+                        <div class="big-progress-title">Overall Score Progress</div>
+                        <div class="big-progress-value" id="bigProgressValue">0%</div>
+                    </div>
+                    <div class="big-progress-track">
+                        <div class="progress-dragon" aria-hidden="true"></div>
+                        <div class="big-progress-fill" id="bigProgressFill"></div>
+                    </div>
+                    <div class="big-progress-markers">
+                        <span>Level 1</span>
+                        <span>Level 2</span>
+                        <span>Level 3</span>
+                        <span>Level 4</span>
+                    </div>
+                </section>
+
+                <div class="cards-layer" id="levelCards"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'dragon-scoreboard-levels-v2';
+        const defaultLevels = [
+            {
+                level: 1,
+                month: 'Jan',
+                title: 'Pipeline Architecture',
+                reward: 'Coffee',
+                icon: '☕',
+                current: 100,
+                target: 100,
+            },
+            {
+                level: 2,
+                month: 'Feb',
+                title: 'Database Development',
+                reward: 'Pizza Party',
+                icon: '🍕',
+                current: 100,
+                target: 100,
+            },
+            {
+                level: 3,
+                month: 'Mar',
+                title: 'Endpoint Development',
+                reward: 'Zyaka (Lunch)',
+                icon: '🍱',
+                current: 100,
+                target: 100,
+            },
+            {
+                level: 4,
+                month: 'Apr & May',
+                title: 'Core System Integration',
+                reward: 'Movie at Alamo',
+                icon: '🎬',
+                current: 34,
+                target: 100,
+            },
+        ];
+
+        let levels = loadLevels();
+
+        function loadLevels() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if (Array.isArray(stored) && stored.length === defaultLevels.length) {
+                    return stored.map((level, index) => ({ ...defaultLevels[index], ...level }));
+                }
+            } catch (error) {
+                console.warn('Scoreboard data could not be loaded.', error);
+            }
+
+            return defaultLevels.map((level) => ({ ...level }));
+        }
+
+        function saveLevels() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(levels));
+        }
+
+        function clampScore(value, max) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return 0;
+            return Math.max(0, Math.min(Math.round(number), max));
+        }
+
+        function getPercent(level) {
+            if (!level.target) return 0;
+            return Math.round((level.current / level.target) * 100);
+        }
+
+        function getStatus(level) {
+            const percent = getPercent(level);
+            if (percent >= 100) return 'Complete';
+            if (percent > 0) return 'In Progress';
+            return 'Not Started';
+        }
+
+        function renderCards() {
+            const cards = document.getElementById('levelCards');
+            cards.innerHTML = levels.map((level, index) => {
+                const percent = getPercent(level);
+                const status = getStatus(level);
+                const isComplete = percent >= 100;
+
+                return `
+                    <div class="segment-badge ${isComplete ? 'is-complete' : ''}" data-index="${index}">
+                        <div class="card-top">
+                            <div>
+                                <div class="level-title">Level ${level.level}</div>
+                                <div class="level-month-tag">${level.month}</div>
+                            </div>
+                            <span class="status-pill">${status}</span>
+                        </div>
+                        <div class="big-level-percent" data-percent-readout="${index}">${Math.min(percent, 100)}%</div>
+                        <span class="card-task editable-text" contenteditable="true" data-index="${index}" data-field="title">${escapeHtml(level.title)}</span>
+                        <div class="reward-row">
+                            <span class="reward-icon" aria-hidden="true">${level.icon}</span>
+                            <div class="reward-copy">
+                                <span class="reward-label">${isComplete ? 'Unlocked' : 'Unlocks'}</span>
+                                <span class="reward-name editable-text" contenteditable="true" data-index="${index}" data-field="reward">${escapeHtml(level.reward)}</span>
+                            </div>
+                        </div>
+                        <div class="score-readout">
+                            <strong data-score-readout="${index}">${level.current} / ${level.target}</strong>
+                        </div>
+                        <input class="level-slider" type="range" min="0" max="${level.target}" value="${level.current}" data-index="${index}" data-field="current">
+                        <div class="card-actions">
+                            <button class="complete-toggle" type="button" data-index="${index}">${percent >= 100 ? 'Reset' : 'Complete'}</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderStats();
+        }
+
+        function renderStats() {
+            const totalCurrent = levels.reduce((sum, level) => sum + level.current, 0);
+            const totalTarget = levels.reduce((sum, level) => sum + level.target, 0);
+            const completed = levels.filter((level) => getPercent(level) >= 100).length;
+            const overall = totalTarget ? Math.round((totalCurrent / totalTarget) * 100) : 0;
+            const active = levels.find((level) => getPercent(level) < 100) ?? levels[levels.length - 1];
+            const clampedOverall = Math.min(overall, 100);
+            const ratio = clampedOverall / 100;
+            const hue = Math.round(36 - (20 * ratio));
+            const lightness = Math.round(62 - (10 * ratio));
+            const glowAlpha = (0.24 + (0.24 * ratio)).toFixed(2);
+            const softAlpha = (0.12 + (0.16 * ratio)).toFixed(2);
+            const root = document.documentElement;
+            const bigTrack = document.querySelector('.big-progress-track');
+
+            document.getElementById('totalScore').textContent = `${totalCurrent} / ${totalTarget}`;
+            document.getElementById('overallProgress').textContent = `${clampedOverall}%`;
+            document.getElementById('levelsComplete').textContent = `${completed} / ${levels.length}`;
+            document.getElementById('currentLevel').textContent = `Level ${active.level} of ${levels.length}`;
+            document.getElementById('nextReward').textContent = `${active.icon} ${active.reward}`;
+            document.getElementById('bigProgressValue').textContent = `${clampedOverall}%`;
+
+            if (bigTrack) {
+                bigTrack.style.setProperty('--progress-ratio', String(ratio));
+            }
+            root.style.setProperty('--theme-color', `hsl(${hue} 92% ${lightness}%)`);
+            root.style.setProperty('--theme-glow', `hsla(${hue} 92% ${lightness}% / ${glowAlpha})`);
+            root.style.setProperty('--theme-soft', `hsla(${hue} 92% ${lightness}% / ${softAlpha})`);
+        }
+
+        function updateCardVisual(index) {
+            const card = document.querySelector(`.segment-badge[data-index="${index}"]`);
+            if (!card) return;
+
+            const percent = Math.min(getPercent(levels[index]), 100);
+            const status = getStatus(levels[index]);
+            const readout = card.querySelector('[data-score-readout]');
+            const percentReadout = card.querySelector('[data-percent-readout]');
+            const slider = card.querySelector('.level-slider');
+            const statusPill = card.querySelector('.status-pill');
+            const button = card.querySelector('.complete-toggle');
+            const rewardLabel = card.querySelector('.reward-label');
+
+            if (slider) slider.value = levels[index].current;
+            if (readout) readout.textContent = `${levels[index].current} / ${levels[index].target}`;
+            if (percentReadout) percentReadout.textContent = `${percent}%`;
+            if (statusPill) statusPill.textContent = status;
+            if (button) button.textContent = percent >= 100 ? 'Reset' : 'Complete';
+            if (rewardLabel) rewardLabel.textContent = percent >= 100 ? 'Unlocked' : 'Unlocks';
+            card.classList.toggle('is-complete', percent >= 100);
+
+            renderStats();
+        }
+
+        function celebrateReward(level, index) {
+            const card = document.querySelector(`.segment-badge[data-index="${index}"]`);
+            if (card) {
+                card.classList.remove('reward-unlocked');
+                void card.offsetWidth;
+                card.classList.add('reward-unlocked');
+            }
+
+            const existingToast = document.querySelector('.celebration-toast');
+            if (existingToast) existingToast.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'celebration-toast';
+            toast.innerHTML = `
+                <span class="toast-icon" aria-hidden="true">${level.icon}</span>
+                <span><strong>${escapeHtml(level.reward)}</strong> unlocked</span>
+            `;
+            document.body.appendChild(toast);
+            window.setTimeout(() => toast.remove(), 3200);
+
+            const rect = card ? card.getBoundingClientRect() : {
+                left: window.innerWidth / 2,
+                top: window.innerHeight / 2,
+                width: 0,
+                height: 0,
+            };
+            const originX = rect.left + rect.width / 2;
+            const originY = rect.top + rect.height / 2;
+            const colors = ['#f4b942', '#38bdf8', '#34d399', '#fb7185', '#f8fafc'];
+
+            for (let i = 0; i < 28; i += 1) {
+                const spark = document.createElement('span');
+                const angle = (Math.PI * 2 * i) / 28;
+                const distance = 70 + Math.random() * 120;
+                spark.className = 'spark';
+                spark.style.left = `${originX}px`;
+                spark.style.top = `${originY}px`;
+                spark.style.setProperty('--spark-x', `${Math.cos(angle) * distance}px`);
+                spark.style.setProperty('--spark-y', `${Math.sin(angle) * distance}px`);
+                spark.style.setProperty('--spark-color', colors[i % colors.length]);
+                document.body.appendChild(spark);
+                window.setTimeout(() => spark.remove(), 1100);
+            }
+        }
+
+        function setLevelScore(index, value, shouldCelebrate = true) {
+            const wasComplete = getPercent(levels[index]) >= 100;
+            levels[index].current = clampScore(value, levels[index].target);
+            saveLevels();
+            updateCardVisual(index);
+
+            if (shouldCelebrate && !wasComplete && getPercent(levels[index]) >= 100) {
+                celebrateReward(levels[index], index);
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        document.addEventListener('input', (event) => {
+            const target = event.target;
+            if (target.matches('.level-slider')) {
+                const index = Number(target.getAttribute('data-index'));
+                setLevelScore(index, target.value);
+            }
+        });
+
+        document.addEventListener('blur', (event) => {
+            const target = event.target;
+            if (target.matches('.editable-text')) {
+                const index = Number(target.getAttribute('data-index'));
+                const field = target.getAttribute('data-field');
+                if (!Number.isInteger(index) || !field) return;
+                levels[index][field] = target.textContent.trim();
+                saveLevels();
+                renderCards();
+            }
+        }, true);
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('.complete-toggle');
+            if (!button) return;
+
+            const index = Number(button.getAttribute('data-index'));
+            const percent = getPercent(levels[index]);
+            const shouldCelebrate = percent < 100;
+            levels[index].current = percent >= 100 ? 0 : levels[index].target;
+            saveLevels();
+            renderCards();
+            if (shouldCelebrate) {
+                celebrateReward(levels[index], index);
+            }
+        });
+
+        renderCards();
+    </script>
+</body>
+
+</html>
